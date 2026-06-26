@@ -1,7 +1,10 @@
 import calendar
-from datetime import date
+from datetime import date, datetime
 
+import pytz
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+from bot.config import settings
 
 MONTHS_RU = [
     "", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
@@ -11,7 +14,8 @@ DAYS_RU = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
 
 def calendar_keyboard(year: int, month: int) -> InlineKeyboardMarkup:
-    today = date.today()
+    tz = pytz.timezone(settings.TIMEZONE)
+    today = datetime.now(tz).date()
     rows = []
 
     # Header: ◀ Июнь 2026 ▶

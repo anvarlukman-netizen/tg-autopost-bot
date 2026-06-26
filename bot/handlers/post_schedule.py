@@ -62,7 +62,9 @@ async def handle_calendar_click(callback: CallbackQuery, state: FSMContext) -> N
     if action == "day":
         year, month, day = int(parts[2]), int(parts[3]), int(parts[4])
         selected = date(year, month, day)
-        if selected < date.today():
+        tz = pytz.timezone(settings.TIMEZONE)
+        today_local = datetime.now(tz).date()
+        if selected < today_local:
             await callback.answer("❌ Нельзя выбрать прошедшую дату", show_alert=True)
             return
 
