@@ -1,6 +1,9 @@
 import asyncio
 import logging
+import os
 
+import aiohttp
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -16,6 +19,31 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 
+async def health_handler(request: web.Request) -> web.Response:
+    return web.Response(text="OK")
+
+
+async def run_web_server() -> None:
+    port = int(os.environ.get("PORT", 8080))
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info("Health server on port %d", port)
+
+
+async def self_ping(url: str) -> None:
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.get(f"{url}/health", timeout=aiohttp.ClientTimeout(total=10))
+        logger.debug("Self-ping OK")
+    except Exception as e:
+        logger.warning("Self-ping failed: %s", e)
+
+
 async def main() -> None:
     await init_db()
 
@@ -26,7 +54,6 @@ async def main() -> None:
     set_bot(bot)
 
     dp = Dispatcher(storage=MemoryStorage())
-
     dp.include_router(start.router)
     dp.include_router(channels.router)
     dp.include_router(post_create.router)
@@ -37,6 +64,14 @@ async def main() -> None:
     scheduler = create_scheduler()
     scheduler.start()
     logger.info("Scheduler started")
+
+    # Keep Render free tier awake by pinging own URL every 14 minutes
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    if render_url:
+        scheduler.add_job(self_ping, "interval", minutes=14, args=[render_url], id="self_ping")
+        logger.info("Self-ping enabled for %s", render_url)
+
+    await run_web_server()
 
     try:
         logger.info("Bot started polling")
