@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from datetime import datetime, timedelta
 
 import aiohttp
 from aiohttp import web
@@ -44,6 +45,25 @@ async def self_ping(url: str) -> None:
         logger.warning("Self-ping failed: %s", e)
 
 
+async def recover_scheduled_jobs(scheduler) -> None:
+    from bot.db.base import async_session_maker
+    from bot.db.crud import get_scheduled_posts
+    from bot.scheduler.jobs import publish_post
+    async with async_session_maker() as session:
+        posts = await get_scheduled_posts(session)
+    now = datetime.utcnow()
+    count = 0
+    for post in posts:
+        run_at = post.scheduled_at if post.scheduled_at > now else now + timedelta(seconds=10)
+        scheduler.add_job(
+            publish_post, trigger="date", run_date=run_at,
+            args=[post.id], id=f"post_{post.id}", replace_existing=True,
+        )
+        count += 1
+    if count:
+        logger.info("Recovered %d scheduled jobs from DB", count)
+
+
 async def main() -> None:
     await init_db()
 
@@ -65,10 +85,15 @@ async def main() -> None:
     scheduler.start()
     logger.info("Scheduler started")
 
+    await recover_scheduled_jobs(scheduler)
+
     # Keep Render free tier awake by pinging own URL every 14 minutes
     render_url = os.environ.get("RENDER_EXTERNAL_URL")
     if render_url:
-        scheduler.add_job(self_ping, "interval", minutes=14, args=[render_url], id="self_ping")
+        scheduler.add_job(
+            self_ping, "interval", minutes=14, args=[render_url],
+            id="self_ping", replace_existing=True,
+        )
         logger.info("Self-ping enabled for %s", render_url)
 
     await run_web_server()

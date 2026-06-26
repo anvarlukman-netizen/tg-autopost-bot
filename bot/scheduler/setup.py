@@ -1,4 +1,3 @@
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from bot.config import settings
@@ -8,9 +7,10 @@ _scheduler: AsyncIOScheduler | None = None
 
 def create_scheduler() -> AsyncIOScheduler:
     global _scheduler
-    db_url = settings.DATABASE_URL.replace("+aiosqlite", "")  # sync URL for APScheduler
-    jobstores = {"default": SQLAlchemyJobStore(url=db_url)}
-    _scheduler = AsyncIOScheduler(jobstores=jobstores, timezone=settings.TIMEZONE)
+    _scheduler = AsyncIOScheduler(
+        timezone=settings.TIMEZONE,
+        job_defaults={"misfire_grace_time": 600},  # fire even if up to 10 min late
+    )
     return _scheduler
 
 
