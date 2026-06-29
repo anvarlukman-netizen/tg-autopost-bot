@@ -6,7 +6,7 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
     ADMIN_ID: int
-    DATABASE_URL: str = "sqlite+aiosqlite:///data/bot.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///data/bot.db"  # override with postgresql+asyncpg://... for production
     TIMEZONE: str = "Europe/Moscow"
 
 
