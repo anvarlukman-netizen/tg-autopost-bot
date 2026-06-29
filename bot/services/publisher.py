@@ -1,5 +1,8 @@
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+from aiogram.types import (
+    InlineKeyboardButton, InlineKeyboardMarkup,
+    InputMediaPhoto, InputMediaVideo, LinkPreviewOptions,
+)
 
 from bot.db.models import MediaType, Post
 
@@ -25,12 +28,11 @@ def _build_text(post: Post) -> str:
 
 
 async def send_post(bot: Bot, post: Post) -> int:
-    """Send post to channel. Returns message_id of the sent message."""
     channel_id = post.channel.tg_id
     text = _build_text(post)
     markup = _build_reply_markup(post)
     silent = post.silent
-    no_preview = post.disable_web_preview
+    link_preview = LinkPreviewOptions(is_disabled=post.disable_web_preview)
 
     media = sorted(post.media, key=lambda m: m.position)
 
@@ -41,7 +43,7 @@ async def send_post(bot: Bot, post: Post) -> int:
             parse_mode="HTML",
             reply_markup=markup,
             disable_notification=silent,
-            disable_web_page_preview=no_preview,
+            link_preview_options=link_preview,
         )
         return msg.message_id
 
@@ -83,11 +85,10 @@ async def send_post(bot: Bot, post: Post) -> int:
     )
     last_id = messages[-1].message_id
 
-    # Send buttons as a separate reply if any
     if markup:
         btn_msg = await bot.send_message(
             chat_id=channel_id,
-            text="‍",  # invisible char
+            text="‍",
             reply_markup=markup,
             disable_notification=True,
         )

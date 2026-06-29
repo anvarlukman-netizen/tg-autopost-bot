@@ -10,6 +10,8 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
+from aiogram.types import ErrorEvent
+
 from bot.bot_instance import set_bot
 from bot.config import settings
 from bot.db.base import init_db
@@ -96,7 +98,24 @@ async def main() -> None:
         )
         logger.info("Self-ping enabled for %s", render_url)
 
+    @dp.error()
+    async def error_handler(event: ErrorEvent) -> None:
+        logger.error("Handler exception: %s", event.exception, exc_info=True)
+        try:
+            await bot.send_message(
+                settings.ADMIN_ID,
+                f"⚠️ Ошибка в боте:\n<code>{type(event.exception).__name__}: {event.exception}</code>",
+                parse_mode="HTML",
+            )
+        except Exception:
+            pass
+
     await run_web_server()
+
+    try:
+        await bot.send_message(settings.ADMIN_ID, "✅ Бот запущен и готов к работе.")
+    except Exception as e:
+        logger.warning("Startup notification failed: %s", e)
 
     try:
         logger.info("Bot started polling")

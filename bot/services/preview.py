@@ -1,5 +1,5 @@
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, InputMediaVideo, LinkPreviewOptions
 
 from bot.db.models import MediaType, Post
 from bot.services.publisher import _build_reply_markup, _build_text
@@ -19,7 +19,7 @@ async def send_preview(bot: Bot, post: Post, admin_id: int) -> None:
             text=header + (text or "<i>нет текста</i>"),
             parse_mode="HTML",
             reply_markup=markup,
-            disable_web_page_preview=post.disable_web_preview,
+            link_preview_options=LinkPreviewOptions(is_disabled=post.disable_web_preview),
         )
         return
 
